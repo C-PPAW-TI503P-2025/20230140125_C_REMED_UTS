@@ -175,7 +175,7 @@ Headers: x-user-role: admin
 
 ---
 
-### User Endpoints (Perlu Header: `x-user-role: user` dan `x-user-id: [id]`)
+### User Endpoints (Perlu Header: `x-user-role: user` dan `x-user-id: 1`)
 
 #### 6. Borrow Book
 ```
@@ -191,6 +191,35 @@ Headers:
   "bookId": 1,
   "latitude": -6.2088,
   "longitude": 106.8456
+}
+```
+
+#### 7. Get Borrow History
+```
+GET /api/borrow/history
+Headers: 
+  x-user-role: user
+  x-user-id: 1
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "userId": 1,
+      "bookId": 1,
+      "borrowDate": "2026-01-31T01:23:45.000Z",
+      "latitude": -6.2088,
+      "longitude": 106.8456,
+      "book": {
+        "title": "Belajar Node.js",
+        "author": "John Doe"
+      }
+    }
+  ]
 }
 ```
 
@@ -268,19 +297,53 @@ REMIDI_PAW/
 └── README.md               # Dokumentasi
 ```
 
-## 🧪 Testing dengan Postman
+## 🧪 Panduan Testing dengan Postman
 
-### 1. Test Public Endpoints
-- Tidak perlu header khusus
-- Test GET `/api/books` dan GET `/api/books/1`
+Untuk menguji semua fitur, buka Postman dan ikuti langkah berikut:
 
-### 2. Test Admin Endpoints
-- Tambahkan header: `x-user-role: admin`
-- Test POST, PUT, DELETE `/api/books`
+### 1. Persiapan Header Umum
+Hampir semua endpoint (kecuali Public) membutuhkan Header. Masukkan ini di tab **Headers** di Postman:
+- `Content-Type`: `application/json`
+- `x-user-role`: `admin` (untuk CRUD) atau `user` (untuk Pinjam)
+- `x-user-id`: `1` (untuk User)
 
-### 3. Test User Endpoints
-- Tambahkan header: `x-user-role: user` dan `x-user-id: 1`
-- Test POST `/api/borrow` dengan body yang sesuai
+### 2. Skenario Uji Admin (CRUD)
+Gunakan `x-user-role: admin` di Header:
+
+*   **CREATE (Tambah Buku)**
+    *   Method: `POST`
+    *   URL: `http://localhost:3000/api/books`
+    *   Body (raw JSON): 
+        ```json
+        { "title": "Buku Baru", "author": "Penulis", "stock": 10 }
+        ```
+*   **READ (Lihat Semua)**
+    *   Method: `GET`
+    *   URL: `http://localhost:3000/api/books`
+*   **UPDATE (Ubah Buku)**
+    *   Method: `PUT`
+    *   URL: `http://localhost:3000/api/books/1` (ganti 1 dengan ID buku)
+    *   Body (raw JSON): 
+        ```json
+        { "title": "Judul Baru", "stock": 5 }
+        ```
+*   **DELETE (Hapus Buku)**
+    *   Method: `DELETE`
+    *   URL: `http://localhost:3000/api/books/1`
+
+### 3. Skenario Uji User (Pinjam & Riwayat)
+Gunakan `x-user-role: user` dan `x-user-id: 1` di Header:
+
+*   **BORROW (Pinjam Buku)**
+    *   Method: `POST`
+    *   URL: `http://localhost:3000/api/borrow`
+    *   Body (raw JSON):
+        ```json
+        { "bookId": 1, "latitude": -6.20, "longitude": 106.84 }
+        ```
+*   **HISTORY (Lihat Riwayat)**
+    *   Method: `GET`
+    *   URL: `http://localhost:3000/api/borrow/history`
 
 ## 📸 Screenshots
 
