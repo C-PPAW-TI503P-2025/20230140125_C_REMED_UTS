@@ -1,145 +1,138 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library System API - Geolocation Based Borrowing</title>
+    <title>Perpustakaan Digital</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
-    <div class="container">
+    <div class="main-container">
         <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <h1>📚 Library System API</h1>
-                <p class="subtitle">Geolocation-Based Book Borrowing System</p>
-            </div>
-            <div class="status-badge">
-                <span class="status-dot"></span>
-                Server Running
-            </div>
-        </header>
-
-        <!-- Quick Stats -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">📖</div>
-                <div class="stat-info">
-                    <div class="stat-value" id="totalBooks">-</div>
-                    <div class="stat-label">Total Books</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📍</div>
-                <div class="stat-info">
-                    <div class="stat-value" id="totalBorrows">-</div>
-                    <div class="stat-label">Total Borrows</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">🔐</div>
-                <div class="stat-info">
-                    <div class="stat-value">3</div>
-                    <div class="stat-label">User Roles</div>
-                </div>
+        <div class="card header-card">
+            <h1>Perpustakaan KING MU</h1>
+            <div class="role-selector">
+                <span>Peran:</span>
+                <select id="userRole">
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                </select>
             </div>
         </div>
 
-        <!-- API Documentation -->
-        <div class="section">
-            <h2>🚀 API Endpoints</h2>
-            
-            <!-- Public Endpoints -->
-            <div class="endpoint-group">
-                <h3 class="group-title">Public Endpoints</h3>
-                <div class="endpoint-card">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <code>/api/books</code>
+        <!-- Navigation -->
+        <nav class="card nav-card">
+            <div class="nav-tab active" data-tab="daftar">Daftar Buku</div>
+            <div class="nav-tab" data-tab="pinjam" id="tabPinjam" style="display: none;">Pinjam Buku</div>
+            <div class="nav-tab" data-tab="kelola" id="tabKelola">Kelola Buku</div>
+            <div class="nav-tab" data-tab="riwayat">Riwayat</div>
+        </nav>
+
+        <!-- Content Section -->
+        <main class="card content-card">
+            <!-- Daftar Buku View -->
+            <div id="daftarBukuView">
+                <div class="content-header">
+                    <h2>Koleksi Buku</h2>
+                    <div class="search-bar">
+                        <input type="text" id="searchInput" placeholder="Cari judul atau penulis..."
+                            class="search-input">
+                        <button class="search-btn" onclick="filterBooks()">Cari</button>
                     </div>
-                    <p class="endpoint-desc">Melihat semua buku yang tersedia</p>
-                    <button class="btn btn-primary" onclick="testGetBooks()">Test Endpoint</button>
                 </div>
-                
-                <div class="endpoint-card">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <code>/api/books/:id</code>
-                    </div>
-                    <p class="endpoint-desc">Melihat detail buku berdasarkan ID</p>
-                    <div class="input-group">
-                        <input type="number" id="bookIdInput" placeholder="Book ID" class="input">
-                        <button class="btn btn-primary" onclick="testGetBookById()">Test Endpoint</button>
-                    </div>
+
+                <div id="booksList" class="book-list">
+                    <p class="loading">Memuat daftar buku...</p>
                 </div>
             </div>
 
-            <!-- Admin Endpoints -->
-            <div class="endpoint-group">
-                <h3 class="group-title">Admin Endpoints <span class="badge">x-user-role: admin</span></h3>
-                
-                <div class="endpoint-card">
-                    <div class="endpoint-header">
-                        <span class="method post">POST</span>
-                        <code>/api/books</code>
-                    </div>
-                    <p class="endpoint-desc">Menambahkan buku baru</p>
-                    <div class="form-group">
-                        <input type="text" id="bookTitle" placeholder="Title" class="input">
-                        <input type="text" id="bookAuthor" placeholder="Author" class="input">
-                        <input type="number" id="bookStock" placeholder="Stock" class="input">
-                        <button class="btn btn-success" onclick="testCreateBook()">Create Book</button>
-                    </div>
-                </div>
-            </div>
+            <!-- Pinjam Buku View (Hidden by default) -->
+            <div id="pinjamBukuView" style="display: none;">
+                <h2>Peminjaman Buku</h2>
 
-            <!-- User Endpoints -->
-            <div class="endpoint-group">
-                <h3 class="group-title">User Endpoints <span class="badge">x-user-role: user</span></h3>
-                
-                <div class="endpoint-card">
-                    <div class="endpoint-header">
-                        <span class="method post">POST</span>
-                        <code>/api/borrow</code>
-                    </div>
-                    <p class="endpoint-desc">Meminjam buku dengan tracking lokasi</p>
-                    <div class="form-group">
-                        <input type="number" id="borrowBookId" placeholder="Book ID" class="input">
-                        <input type="number" id="borrowUserId" placeholder="User ID" class="input" value="1">
-                        <div class="location-group">
-                            <input type="text" id="latitude" placeholder="Latitude" class="input" value="-6.2088">
-                            <input type="text" id="longitude" placeholder="Longitude" class="input" value="106.8456">
-                            <button class="btn btn-secondary" onclick="getLocation()">📍 Get My Location</button>
+                <div class="form-container" style="margin-bottom: 30px;">
+                    <h3>Pinjam Buku</h3>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <select id="borrowBookId" class="search-input">
+                            <option value="">Pilih Buku yang ingin dipinjam</option>
+                        </select>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="latitude" placeholder="Latitude" class="search-input"
+                                value="-6.2088">
+                            <input type="text" id="longitude" placeholder="Longitude" class="search-input"
+                                value="106.8456">
+                            <button class="search-btn" style="background: #888;" onclick="getLocation()">📍
+                                Lokasi</button>
                         </div>
-                        <button class="btn btn-success" onclick="testBorrowBook()">Borrow Book</button>
+                        <button class="search-btn" style="padding: 12px;" onclick="testBorrowBook()">Pinjam Buku
+                            Sekarang</button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Response Section -->
-        <div class="section">
-            <h2>📋 API Response</h2>
-            <div class="response-container">
-                <pre id="responseOutput" class="response-output">Klik tombol "Test Endpoint" untuk melihat response...</pre>
+            <!-- Kelola Buku View (Hidden by default) -->
+            <div id="kelolaBukuView" style="display: none;">
+                <div class="manage-grid">
+                    <!-- Kolom Kiri: Form -->
+                    <div class="form-container">
+                        <h3 id="formTitle">Tambah Buku</h3>
+                        <input type="hidden" id="editBookId">
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label>Judul</label>
+                                <input type="text" id="bookTitle" placeholder="Masukkan judul buku"
+                                    class="search-input">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label>Penulis</label>
+                                <input type="text" id="bookAuthor" placeholder="Nama penulis" class="search-input">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label>Stok</label>
+                                <input type="number" id="bookStock" placeholder="1" class="search-input">
+                            </div>
+                            <button class="search-btn" style="padding: 12px; margin-top: 10px;" id="btnSimpanBuku"
+                                onclick="handleSaveBook()">Simpan</button>
+                            <button class="search-btn" style="padding: 12px; background: #888; display: none;"
+                                id="btnCancelEdit" onclick="cancelEdit()">Batal</button>
+                        </div>
+                    </div>
+
+                    <!-- Kolom Kanan: Tabel -->
+                    <div class="table-container">
+                        <h3>Data Buku</h3>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>JUDUL</th>
+                                    <th>PENULIS</th>
+                                    <th>STOK</th>
+                                    <th>AKSI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manageBooksTableBody">
+                                <!-- Dinamis dari script.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <!-- Books List -->
-        <div class="section">
-            <h2>📚 Available Books</h2>
-            <div id="booksList" class="books-grid">
-                <p class="loading">Loading books...</p>
+            <!-- Riwayat View (Hidden by default) -->
+            <div id="riwayatView" style="display: none;">
+                <h2>Riwayat Peminjaman</h2>
+                <div id="borrowHistory" class="book-list">
+                    <p style="text-align: center; color: #999; padding: 40px;">Data riwayat akan ditampilkan di sini.
+                    </p>
+                </div>
             </div>
-        </div>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <p>UCP 1 - Pengembangan Aplikasi Web | Library System with Geolocation</p>
-            <p class="footer-tech">Node.js • Express.js • Sequelize • MySQL</p>
-        </footer>
+        </main>
     </div>
 
     <script src="/script.js"></script>
 </body>
+
 </html>

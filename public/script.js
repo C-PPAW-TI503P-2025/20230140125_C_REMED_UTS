@@ -1,154 +1,264 @@
 const API_BASE = 'http://localhost:3000/api';
+let allBooks = [];
 
-// Load books on page load
+// Load data on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadBooks();
-    updateStats();
+    initTabs();
+    initRoleLogic();
 });
 
-// Update statistics
-async function updateStats() {
+// Role Logic
+function initRoleLogic() {
+    const roleSelector = document.getElementById('userRole');
+    const updateUI = () => {
+        const role = roleSelector.value;
+        const tabKelola = document.getElementById('tabKelola');
+        const tabPinjam = document.getElementById('tabPinjam');
+
+        if (role === 'admin') {
+            tabKelola.style.display = 'block';
+            tabPinjam.style.display = 'none';
+        } else {
+            tabKelola.style.display = 'none';
+            tabPinjam.style.display = 'block';
+        }
+
+        // Reset to first tab when role changes
+        document.querySelector('.nav-tab[data-tab="daftar"]').click();
+    };
+
+    roleSelector.addEventListener('change', updateUI);
+    updateUI(); // Initial run
+}
+
+// Initialize Tab Switching
+function initTabs() {
+    const tabs = document.querySelectorAll('.nav-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Update active state in UI
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Switch views
+            const target = tab.getAttribute('data-tab');
+            document.getElementById('daftarBukuView').style.display = target === 'daftar' ? 'block' : 'none';
+            document.getElementById('pinjamBukuView').style.display = target === 'pinjam' ? 'block' : 'none';
+            document.getElementById('kelolaBukuView').style.display = target === 'kelola' ? 'block' : 'none';
+            document.getElementById('riwayatView').style.display = target === 'riwayat' ? 'block' : 'none';
+
+            if (target === 'daftar' || target === 'kelola' || target === 'pinjam') {
+                loadBooks();
+            } else if (target === 'riwayat') {
+                loadBorrowHistory();
+            }
+        });
+    });
+}
+
+// Load all books from API
+async function loadBooks() {
     try {
         const response = await fetch(`${API_BASE}/books`);
         const data = await response.json();
 
         if (data.success) {
-            document.getElementById('totalBooks').textContent = data.data.length;
-
-            // Calculate total stock
-            const totalStock = data.data.reduce((sum, book) => sum + book.stock, 0);
-            document.getElementById('totalBorrows').textContent = totalStock;
+            allBooks = data.data;
+            renderBooks(allBooks);
         }
     } catch (error) {
-        console.error('Error updating stats:', error);
+        console.error('Error loading books:', error);
+        document.getElementById('booksList').innerHTML = '<p class="loading">Gagal memuat buku. Pastikan server berjalan.</p>';
     }
 }
 
-// Load all books
-async function loadBooks() {
-    const booksList = document.getElementById('booksList');
+// Render books to the list
+function renderBooks(books) {
+    const list = document.getElementById('booksList');
+    const manageTableBody = document.getElementById('manageBooksTableBody');
+    const select = document.getElementById('borrowBookId');
 
-    try {
-        const response = await fetch(`${API_BASE}/books`);
-        const data = await response.json();
-
-        if (data.success && data.data.length > 0) {
-            booksList.innerHTML = data.data.map(book => `
-                <div class="book-card">
-                    <div class="book-title">${book.title}</div>
-                    <div class="book-author">by ${book.author}</div>
-                    <div class="book-stock">📦 Stock: ${book.stock}</div>
+    if (list) {
+        if (books.length > 0) {
+            // Render Public/User List
+            list.innerHTML = books.map(book => `
+                <div class="book-item">
+                    <div class="book-info">
+                        <h3>${book.title}</h3>
+                        <p>Penulis: ${book.author}</p>
+                    </div>
+                    <div class="book-status">
+                        ${book.stock} tersedia
+                    </div>
                 </div>
             `).join('');
         } else {
-            booksList.innerHTML = '<p class="loading">Belum ada buku. Tambahkan buku menggunakan endpoint Admin!</p>';
+            list.innerHTML = '<p class="loading">Tidak ada buku yang ditemukan.</p>';
         }
-    } catch (error) {
-        booksList.innerHTML = '<p class="loading">Error loading books</p>';
-        displayResponse({ success: false, error: error.message });
+    }
+
+    if (manageTableBody) {
+        if (books.length > 0) {
+            // Render Admin Management Table
+            manageTableBody.innerHTML = books.map(book => `
+                <tr>
+                    <td>${book.id}</td>
+                    <td>${book.title}</td>
+                    <td>${book.author}</td>
+                    <td>${book.stock}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn-edit" onclick="editBook(${book.id})">Edit</button>
+                            <button class="btn-hapus" onclick="deleteBook(${book.id})">Hapus</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            manageTableBody.innerHTML = '<tr><td colspan="5" class="loading">Belum ada data buku.</td></tr>';
+        }
+    }
+
+    // Render Select Options for Pinjam
+    if (select) {
+        select.innerHTML = '<option value="">Pilih Buku yang ingin dipinjam</option>' +
+            books.filter(b => b.stock > 0).map(book => `
+                <option value="${book.id}">${book.title} (${book.stock} tersedia)</option>
+            `).join('');
     }
 }
 
-// Display API response
-function displayResponse(data) {
-    const output = document.getElementById('responseOutput');
-    output.textContent = JSON.stringify(data, null, 2);
+// Filter books based on search input
+function filterBooks() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = allBooks.filter(book =>
+        book.title.toLowerCase().includes(query) ||
+        book.author.toLowerCase().includes(query)
+    );
+    renderBooks(filtered);
 }
 
-// Test GET /api/books
-async function testGetBooks() {
-    try {
-        const response = await fetch(`${API_BASE}/books`);
-        const data = await response.json();
-        displayResponse(data);
-        loadBooks();
-        updateStats();
-    } catch (error) {
-        displayResponse({ success: false, error: error.message });
-    }
+// Helper for API Headers based on selected role
+function getHeaders() {
+    const roleSelector = document.getElementById('userRole');
+    const role = roleSelector ? roleSelector.value : 'user';
+
+    return {
+        'Content-Type': 'application/json',
+        'x-user-role': role,
+        'x-user-id': '1' // Default dev user ID
+    };
 }
 
-// Test GET /api/books/:id
-async function testGetBookById() {
-    const bookId = document.getElementById('bookIdInput').value;
-
-    if (!bookId) {
-        alert('Masukkan Book ID!');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE}/books/${bookId}`);
-        const data = await response.json();
-        displayResponse(data);
-    } catch (error) {
-        displayResponse({ success: false, error: error.message });
-    }
-}
-
-// Test POST /api/books (Admin)
-async function testCreateBook() {
+// Handle Save Book (Create or Update)
+async function handleSaveBook() {
+    const id = document.getElementById('editBookId').value;
     const title = document.getElementById('bookTitle').value;
     const author = document.getElementById('bookAuthor').value;
     const stock = document.getElementById('bookStock').value;
 
     if (!title || !author) {
-        alert('Title dan Author harus diisi!');
+        alert('Judul dan Penulis harus diisi!');
         return;
     }
 
+    const bookData = {
+        title,
+        author,
+        stock: parseInt(stock) || 0
+    };
+
     try {
-        const response = await fetch(`${API_BASE}/books`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-user-role': 'admin'
-            },
-            body: JSON.stringify({
-                title,
-                author,
-                stock: parseInt(stock) || 0
-            })
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_BASE}/books/${id}` : `${API_BASE}/books`;
+
+        const response = await fetch(url, {
+            method: method,
+            headers: getHeaders(),
+            body: JSON.stringify(bookData)
         });
 
         const data = await response.json();
-        displayResponse(data);
 
         if (data.success) {
-            // Clear form
-            document.getElementById('bookTitle').value = '';
-            document.getElementById('bookAuthor').value = '';
-            document.getElementById('bookStock').value = '';
-
-            // Reload books
+            alert(id ? 'Buku berhasil diperbarui!' : 'Buku berhasil ditambahkan!');
+            cancelEdit(); // Reset form
             loadBooks();
-            updateStats();
+        } else {
+            alert('Gagal: ' + (data.message || data.error));
         }
     } catch (error) {
-        displayResponse({ success: false, error: error.message });
+        alert('Terjadi kesalahan: ' + error.message);
     }
 }
 
-// Test POST /api/borrow (User)
+// Edit Book (Fill form)
+function editBook(id) {
+    const book = allBooks.find(b => b.id === id);
+    if (!book) return;
+
+    document.getElementById('editBookId').value = book.id;
+    document.getElementById('bookTitle').value = book.title;
+    document.getElementById('bookAuthor').value = book.author;
+    document.getElementById('bookStock').value = book.stock;
+
+    document.getElementById('formTitle').innerText = 'Edit Buku';
+    document.getElementById('btnCancelEdit').style.display = 'block';
+
+    // Smooth scroll to form
+    document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Cancel Edit
+function cancelEdit() {
+    document.getElementById('editBookId').value = '';
+    document.getElementById('bookTitle').value = '';
+    document.getElementById('bookAuthor').value = '';
+    document.getElementById('bookStock').value = '';
+
+    document.getElementById('formTitle').innerText = 'Tambah Buku';
+    document.getElementById('btnCancelEdit').style.display = 'none';
+}
+
+// Delete Book
+async function deleteBook(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus buku ini?')) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/books/${id}`, {
+            method: 'DELETE',
+            headers: getHeaders()
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Buku berhasil dihapus!');
+            loadBooks();
+        } else {
+            alert('Gagal: ' + (data.message || data.error));
+        }
+    } catch (error) {
+        alert('Terjadi kesalahan: ' + error.message);
+    }
+}
+
+// Borrow book (User)
 async function testBorrowBook() {
     const bookId = document.getElementById('borrowBookId').value;
-    const userId = document.getElementById('borrowUserId').value;
     const latitude = document.getElementById('latitude').value;
     const longitude = document.getElementById('longitude').value;
 
-    if (!bookId || !userId || !latitude || !longitude) {
-        alert('Semua field harus diisi!');
+    if (!bookId || !latitude || !longitude) {
+        alert('Silakan pilih buku dan pastikan lokasi terisi!');
         return;
     }
 
     try {
         const response = await fetch(`${API_BASE}/borrow`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-user-role': 'user',
-                'x-user-id': userId
-            },
+            headers: getHeaders(),
             body: JSON.stringify({
                 bookId: parseInt(bookId),
                 latitude: parseFloat(latitude),
@@ -157,22 +267,63 @@ async function testBorrowBook() {
         });
 
         const data = await response.json();
-        displayResponse(data);
 
         if (data.success) {
-            // Clear form
-            document.getElementById('borrowBookId').value = '';
-
-            // Reload books to show updated stock
+            alert('Buku berhasil dipinjam!');
             loadBooks();
-            updateStats();
+            loadBorrowHistory(); // Refresh history
+        } else {
+            alert('Gagal: ' + (data.message || data.error));
         }
     } catch (error) {
-        displayResponse({ success: false, error: error.message });
+        alert('Terjadi kesalahan: ' + error.message);
     }
 }
 
-// Get user's current location
+// Load Borrow History
+async function loadBorrowHistory() {
+    const historyList = document.getElementById('borrowHistory');
+    if (!historyList) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/borrow/history`, {
+            headers: getHeaders()
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            renderBorrowHistory(data.data);
+        }
+    } catch (error) {
+        console.error('Error loading history:', error);
+        historyList.innerHTML = '<p class="loading">Gagal memuat riwayat.</p>';
+    }
+}
+
+// Render Borrow History
+function renderBorrowHistory(history) {
+    const list = document.getElementById('borrowHistory');
+    if (!list) return;
+
+    if (history.length > 0) {
+        list.innerHTML = history.map(item => `
+            <div class="book-item">
+                <div class="book-info">
+                    <h3>${item.book ? item.book.title : 'Buku dihapus'}</h3>
+                    <p>Dipinjam pada: ${new Date(item.borrowDate).toLocaleString('id-ID')}</p>
+                    <p style="font-size: 11px; margin-top: 4px;">📍 Lat: ${item.latitude}, Lon: ${item.longitude}</p>
+                </div>
+                <div class="book-status" style="background: #6366f1;">
+                    Dipinjam
+                </div>
+            </div>
+        `).join('');
+    } else {
+        list.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">Belum ada riwayat peminjaman.</p>';
+    }
+}
+
+// Get Geolocation
 function getLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -182,10 +333,10 @@ function getLocation() {
                 alert('Lokasi berhasil didapatkan!');
             },
             (error) => {
-                alert('Error getting location: ' + error.message);
+                alert('Gagal mendapatkan lokasi: ' + error.message);
             }
         );
     } else {
-        alert('Geolocation tidak didukung oleh browser Anda');
+        alert('Geolocation tidak didukung oleh browser ini.');
     }
 }

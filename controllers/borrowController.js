@@ -70,6 +70,31 @@ const borrowBook = async (req, res, next) => {
     }
 };
 
+// Get borrow history
+const getBorrowHistory = async (req, res, next) => {
+    try {
+        const userId = req.userId; // From middleware
+
+        const history = await BorrowLog.findAll({
+            where: { userId },
+            include: [{
+                model: Book,
+                as: 'book',
+                attributes: ['title', 'author']
+            }],
+            order: [['borrowDate', 'DESC']]
+        });
+
+        res.status(200).json({
+            success: true,
+            data: history
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
-    borrowBook
+    borrowBook,
+    getBorrowHistory
 };
